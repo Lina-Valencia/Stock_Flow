@@ -2,63 +2,71 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Rol;
 use Illuminate\Http\Request;
 
 class RolController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
-        //
+        $roles = Rol::withCount('usuarios')->get();
+        return view('roles.index', compact('roles'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
-        //
+        return view('roles.create');
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
-        //
+        $request->validate([
+            'nombre' => 'required|string|max:255|unique:roles,nombre',
+        ]);
+
+        Rol::create($request->only('nombre'));
+
+        return redirect()->route('roles.index')
+                         ->with('success', 'Rol creado exitosamente.');
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(string $id)
     {
-        //
+        $rol = Rol::with('usuarios')->findOrFail($id);
+        return view('roles.show', compact('rol'));
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
     public function edit(string $id)
     {
-        //
+        $rol = Rol::findOrFail($id);
+        return view('roles.edit', compact('rol'));
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, string $id)
     {
-        //
+        $request->validate([
+            'nombre' => 'required|string|max:255|unique:roles,nombre,' . $id,
+        ]);
+
+        $rol = Rol::findOrFail($id);
+        $rol->update($request->only('nombre'));
+
+        return redirect()->route('roles.index')
+                         ->with('success', 'Rol actualizado exitosamente.');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(string $id)
     {
-        //
+        $rol = Rol::findOrFail($id);
+
+        if ($rol->usuarios()->exists()) {
+            return redirect()->route('roles.index')
+                             ->with('error', 'No se puede eliminar un rol que tiene usuarios asignados.');
+        }
+
+        $rol->delete();
+
+        return redirect()->route('roles.index')
+                         ->with('success', 'Rol eliminado exitosamente.');
     }
 }
