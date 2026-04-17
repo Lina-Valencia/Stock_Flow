@@ -1,0 +1,91 @@
+@extends('layouts.app')
+
+@section('title', 'Editar usuario')
+
+@section('content')
+<div class="max-w-xl">
+    <div class="bg-white rounded-xl shadow-sm p-6">
+        <form method="POST" action="{{ route('usuarios.update', $usuario->id) }}" class="space-y-5">
+            @csrf @method('PUT')
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">ID / Cédula</label>
+                <p class="text-sm text-gray-500 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">{{ $usuario->id }}</p>
+            </div>
+
+            <div>
+                <label for="nombre" class="block text-sm font-medium text-gray-700 mb-1">Nombre completo</label>
+                <input type="text" id="nombre" name="nombre" value="{{ old('nombre', $usuario->nombre) }}" required
+                       class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none
+                              focus:ring-2 focus:ring-indigo-500 @error('nombre') border-red-400 @enderror">
+                @error('nombre') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+            </div>
+
+            <div>
+                <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Correo electrónico</label>
+                <input type="email" id="email" name="email" value="{{ old('email', $usuario->email) }}" required
+                       class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none
+                              focus:ring-2 focus:ring-indigo-500 @error('email') border-red-400 @enderror">
+                @error('email') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+            </div>
+
+            <div>
+                <label for="contacto" class="block text-sm font-medium text-gray-700 mb-1">Contacto</label>
+                <input type="text" id="contacto" name="contacto" value="{{ old('contacto', $usuario->contacto) }}"
+                       class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none
+                              focus:ring-2 focus:ring-indigo-500 @error('contacto') border-red-400 @enderror">
+                @error('contacto') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+            </div>
+
+            <div>
+                <label for="rol_id" class="block text-sm font-medium text-gray-700 mb-1">Rol</label>
+                <select id="rol_id" name="rol_id" required
+                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none
+                               focus:ring-2 focus:ring-indigo-500 @error('rol_id') border-red-400 @enderror">
+                    @foreach ($roles as $rol)
+                        <option value="{{ $rol->id }}"
+                            {{ old('rol_id', $usuario->rol_id) == $rol->id ? 'selected' : '' }}>
+                            {{ $rol->nombre }}
+                        </option>
+                    @endforeach
+                </select>
+                @error('rol_id') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+            </div>
+
+            <div class="flex items-center gap-3">
+                <input type="checkbox" id="activo" name="activo" value="1"
+                       {{ old('activo', $usuario->activo) ? 'checked' : '' }}
+                       class="h-4 w-4 text-indigo-600 rounded border-gray-300">
+                <label for="activo" class="text-sm font-medium text-gray-700">Usuario activo</label>
+            </div>
+
+            <div class="border-t border-gray-100 pt-4">
+                <p class="text-xs text-gray-400 mb-3">Dejar en blanco para mantener la contraseña actual.</p>
+                <div class="space-y-4">
+                    <div>
+                        <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Nueva contraseña</label>
+                        <input type="password" id="password" name="password"
+                               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none
+                                      focus:ring-2 focus:ring-indigo-500 @error('password') border-red-400 @enderror">
+                        @error('password') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label for="password_confirmation" class="block text-sm font-medium text-gray-700 mb-1">Confirmar nueva contraseña</label>
+                        <input type="password" id="password_confirmation" name="password_confirmation"
+                               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none
+                                      focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3 pt-2">
+                <button type="submit"
+                        class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors">
+                    Actualizar
+                </button>
+                <a href="{{ route('usuarios.index') }}" class="text-sm text-gray-500 hover:text-gray-700">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+@endsection

@@ -1,0 +1,122 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Prestamo;
+use App\Models\Articulo;
+use App\Models\Usuario;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+
+class PrestamoController extends Controller
+{
+    public function index()
+    {
+        $prestamos = Prestamo::with(['articulos', 'solicitante', 'custodio'])->latest()->get();
+        return view('prestamos.index', compact('prestamos'));
+    }
+
+    public function create()
+    {
+        $articulos    = Articulo::where('estado', 'disponible')->where('activo', true)->get();
+        $solicitantes = Usuario::where('activo', true)->with('rol')->get();
+        $custodios    = Usuario::whereHas('rol', fn ($q) => $q->where('nombre', 'Custodio'))
+                               ->where('activo', true)->get();
+
+        return view('prestamos.create', compact('articulos', 'solicitantes', 'custodios'));
+    }
+
+    public function store(Request $request)
+    {
+        $request->validate([
+            'articulo_id'    => 'required|exists:articulos,id',
+            'solicitante_id' => 'required|exists:usuarios,id',
+            'custodio_id'    => 'required|exists:usuarios,id',
+            'fecha_limite'   => 'required|date|after:today',
+        ]);
+
+        // Verificar que el artículo sigue disponible
+        $articulo = Articulo::findOrFail($request->articulo_id);
+        if ($articulo->estado !== 'disponible') {
+            return back()->withErrors(['articulo_id' => 'El artículo ya no está disponible.'])->withInput();
+        }
+
+        Prestamo::create([
+            'articulo_id'     => $request->articulo_id,
+            'solicitante_id'  => $request->solicitante_id,
+            'custodio_id'     => $request->custodio_id,
+            'estado'          => 'pendiente',
+            'fecha_solicitud' => now(),
+            'fecha_limite'    => $request->fecha_limite,
+        ]);
+
+        return redirect()->route('prestamos.index')
+                         ->with('success', 'Solicitud de préstamo creada exitosamente.');
+    }
+
+    public function show(string $id)
+    {
+        $prestamo = Prestamo::with(['articulos', 'solicitante', 'custodio'])->findOrFail($id);
+        return view('prestamos.show', compact('prestamo'));
+    }
+
+    public function edit(string $id)
+    {
+        $prestamo     = Prestamo::with(['articulos', 'solicitante', 'custodio'])->findOrFail($id);
+        $custodios    = Usuario::whereHas('rol', fn ($q) => $q->where('nombre', 'Custodio'))
+                               ->where('activo', true)->get();
+        $estados      = ['pendiente', 'aprobado', 'entregado', 'devuelto', 'rechazado', 'cancelado'];
+        $estadosDevolucion = ['bueno', 'deteriorado', 'dañado'];
+
+        return view('prestamos.edit', compact('prestamo', 'custodios', 'estados', 'estadosDevolucion'));
+    }
+
+    public function update(Request $request, string $id)
+    {
+        $request->validate([
+            'estado'           => 'required|in:pendiente,aprobado,entregado,devuelto,rechazado,cancelado',
+            'custodio_id'      => 'required|exists:usuarios,id',
+            'fecha_entrega'    => 'nullable|date',
+            'fecha_limite'     => 'nullable|date',
+            'fecha_devolucion' => 'nullable|date',
+            'estado_devolucion'=> 'nullable|in:bueno,deteriorado,dañado',
+        ]);
+
+        $prestamo = Prestamo::with('articulos')->findOrFail($id);
+
+        $prestamo->fill($request->only(
+            'estado', 'custodio_id', 'fecha_entrega', 'fecha_limite', 'fecha_devolucion', 'estado_devolucion'
+        ));
+        $prestamo->save();
+
+        // Sincronizar estado del artículo
+        $articulo = $prestamo->articulos;
+        if ($articulo) {
+            if ($prestamo->estado === 'entregado') {
+                $articulo->estado = 'en_prestamo';
+                $articulo->save();
+            } elseif (in_array($prestamo->estado, ['devuelto', 'rechazado', 'cancelado'])) {
+                $articulo->estado = 'disponible';
+                $articulo->save();
+            }
+        }
+
+        return redirect()->route('prestamos.show', $prestamo->id)
+                         ->with('success', 'Préstamo actualizado exitosamente.');
+    }
+
+    public function destroy(string $id)
+    {
+        $prestamo = Prestamo::findOrFail($id);
+
+        if (in_array($prestamo->estado, ['entregado'])) {
+            return redirect()->route('prestamos.index')
+                             ->with('error', 'No se puede eliminar un préstamo en curso (entregado).');
+        }
+
+        $prestamo->delete();
+
+        return redirect()->route('prestamos.index')
+                         ->with('success', 'Préstamo eliminado exitosamente.');
+    }
+}
